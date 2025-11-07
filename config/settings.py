@@ -49,6 +49,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'ip_tracking.middleware.IPLoggingMiddleware', #the IP middleware
+    'ip_tracking.middleware.IPLoggingAndBlockingMiddleware' #IP blocking middleware
 
 ]
 
