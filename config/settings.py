@@ -135,3 +135,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #django-ratelimit default rate limiting
 RATELIMIT_ENABLE = True
 RATELIMIT_VIEW = 'ratelimit.views.ratelimited'  #default view on limit reached
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+CELERY_BEAT_SCHEDULE = {
+    'detect-anomalies-hourly': {
+        'task': 'ip_tracking.tasks.detect_anomalies',
+        'schedule': crontab(minute=0, hour='*'),  # every hour
+    },
+}
