@@ -1,3 +1,4 @@
+from functools import cache
 from django.http import HttpResponseForbidden
 from .models import BlockedIP, RequestLog
 from datetime import datetime
@@ -40,28 +41,41 @@ class IPLoggingMiddleware:
     
 
 class IPLoggingAndBlockingMiddleware:
-    """
-    logs all requests and blocks any IPs in blockedIP table
-    """
     def __init__(self, get_response):
         self.get_response = get_response
+        self.geo = GeoIP2()
 
     def __call__(self, request):
         ip = self.get_client_ip(request)
         path = request.path
 
-        #block the request if ip is blacklisted
+        #block blacklisted Ips
         if BlockedIP.objects.filter(ip_address=ip).exists():
-            return HttpResponseForbidden("Access Denied.")
+            return HttpResponseForbidden("Access Denied: Your IP has been blocked.")
 
-        #log incoming requests
+        #get geo date from geoIP
+        geo_data = cache.get(ip)
+        if not geo_data:
+            try:
+                geo_info = self.geo.city(ip)
+                geo_data = {
+                    'country': geo_info.get('country_name', ''),
+                    'city': geo_info.get('city', '')
+                }
+                cache.set(ip, geo_data, 60 * 60 * 24)  #cache for 24hours
+            except Exception:
+                geo_data = {'country': '', 'city': ''}
+
+        #log request
         RequestLog.objects.create(
             ip_address=ip,
             path=path,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            country=geo_data['country'],
+            city=geo_data['city']
         )
-        response = self.get_response(request)
-        return response
+
+        return self.get_response(request)
 
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
